@@ -5,6 +5,7 @@
 #include <cmath>
 #include <mpi.h>
 #include "radioactive_mpi.hpp"
+#include "heat_mpi.hpp"
 #include "utils.hpp"
 
 using namespace std;
@@ -28,10 +29,11 @@ int main(int argc, char* argv[]) {
     int mode = stoi(argv[1]);
     int steps = 100;
 
-    vector<float> radioactive_grid;
+    vector<float> radioactive_grid, heat_grid;
 
     if (world_rank == 0) {
-        radioactive_grid = read_csv("data/radioactive_matrix.csv", H, W);        
+        // radioactive_grid = read_csv("data/radioactive_matrix.csv", H, W);
+        heat_grid = read_csv("data/heat_matrix.csv", H, W);
         long long safe_count = 0;
         for (float v : radioactive_grid) if (fabs(v) < 1e-6) safe_count++;
         cout << "Safe cells before simulation: " << safe_count << "\n";
@@ -51,10 +53,12 @@ int main(int argc, char* argv[]) {
         }
 
         if (world_rank != 0) {
-            radioactive_grid.resize(H * W);
+            // radioactive_grid.resize(H * W);
+            heat_grid.resize(H * W);
         }
 
-        run_radioactive_mpi_sync(radioactive_grid, steps);
+        // run_radioactive_mpi_async(radioactive_grid, steps);
+        run_heat_mpi_async(heat_grid, H, W, steps);
     }
 
 
@@ -70,6 +74,7 @@ int main(int argc, char* argv[]) {
         cout << "Safe cells after simulation: " << safe_after << "\n";
 
         // write_csv(radioactive_grid, "output/radioactive_matrix.csv");
+        write_csv(heat_grid, "output/heat_matrix.csv");
     }
 
     MPI_Finalize();

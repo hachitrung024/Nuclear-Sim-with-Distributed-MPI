@@ -118,3 +118,140 @@ void run_radioactive_mpi_sync(std::vector<float>& full_grid, int steps) {
                full_grid.data(), local_size, MPI_FLOAT,
                0, MPI_COMM_WORLD);
 }
+
+void run_radioactive_mpi_async(std::vector<float>& full_grid, int steps) {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (H % size != 0) {
+        if (rank == 0) std::cerr << "H must be divisible by number of processes\n";
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+
+    int local_H = H / size;
+    int local_size = local_H * W;
+
+    std::vector<float> local_grid(local_size);
+    std::vector<float> new_local(local_size);
+    std::vector<float> ghost_up(W), ghost_down(W);
+
+    // Ensure full_grid has valid storage on non-root for later Gather
+    if (rank != 0) full_grid.resize(H * W);
+
+    // Scatter initial data from root to all ranks
+    MPI_Scatter(full_grid.data(), local_size, MPI_FLOAT,
+                local_grid.data(), local_size, MPI_FLOAT,
+                0, MPI_COMM_WORLD);
+
+    const int TAG_UP = 100;
+    const int TAG_DOWN = 200;
+
+    // Requests array: we may post up to 2 Irecv + 2 Isend
+    MPI_Request reqs[4];
+    MPI_Status stats[4];
+
+    for (int t = 0; t < steps; t++) {
+        int req_count = 0;
+
+        // Post non-blocking receives for ghost rows (from neighbors)
+        if (rank > 0) {
+            MPI_Irecv(ghost_up.data(), W, MPI_FLOAT,
+                      rank - 1, TAG_DOWN, MPI_COMM_WORLD,
+                      &reqs[req_count++]); // recv from up neighbor (their down send)
+        } else {
+            std::fill(ghost_up.begin(), ghost_up.end(), 0.0f);
+        }
+
+        if (rank < size - 1) {
+            MPI_Irecv(ghost_down.data(), W, MPI_FLOAT,
+                      rank + 1, TAG_UP, MPI_COMM_WORLD,
+                      &reqs[req_count++]); // recv from down neighbor (their up send)
+        } else {
+            std::fill(ghost_down.begin(), ghost_down.end(), 0.0f);
+        }
+
+        // Post non-blocking sends of our boundary rows
+        if (rank > 0) {
+            MPI_Isend(&local_grid[0], W, MPI_FLOAT,
+                      rank - 1, TAG_UP, MPI_COMM_WORLD,
+                      &reqs[req_count++]); // send top row to up neighbor
+        }
+        if (rank < size - 1) {
+            MPI_Isend(&local_grid[(local_H - 1) * W], W, MPI_FLOAT,
+                      rank + 1, TAG_DOWN, MPI_COMM_WORLD,
+                      &reqs[req_count++]); // send bottom row to down neighbor
+        }
+
+        // ---------------------------
+        // Overlap: compute interior rows (not depending on ghost rows)
+        // interior rows are i = 1 .. local_H-2 (if local_H >= 3)
+        // ---------------------------
+        if (local_H >= 3) {
+            for (int i = 1; i <= local_H - 2; ++i) {
+                for (int j = 0; j < W; ++j) {
+                    float C = local_grid[i * W + j];
+                    float C_up = local_grid[(i - 1) * W + j];
+                    float C_down = local_grid[(i + 1) * W + j];
+                    float C_left = (j > 0 ? local_grid[i * W + j - 1] : 0.0f);
+                    float C_right = (j < W - 1 ? local_grid[i * W + j + 1] : 0.0f);
+
+                    new_local[i * W + j] = calc_next_c(C, C_left, C_right, C_up, C_down);
+                }
+            }
+        }
+
+        // If there were no requests (single-rank cluster), skip wait
+        if (req_count > 0) {
+            MPI_Waitall(req_count, reqs, stats);
+        }
+
+        // Now ghost_up and ghost_down are ready (or set to 0 at boundaries).
+        // Compute boundary rows which depend on ghosts:
+        // top row i = 0
+        if (local_H >= 1) {
+            int i = 0;
+            for (int j = 0; j < W; ++j) {
+                float C = local_grid[i * W + j];
+                float C_up = (i == 0) ? ghost_up[j] : local_grid[(i - 1) * W + j];
+                float C_down = (local_H == 1) ? ghost_down[j] : local_grid[(i + 1) * W + j];
+                float C_left = (j > 0 ? local_grid[i * W + j - 1] : 0.0f);
+                float C_right = (j < W - 1 ? local_grid[i * W + j + 1] : 0.0f);
+
+                new_local[i * W + j] = calc_next_c(C, C_left, C_right, C_up, C_down);
+            }
+        }
+
+        // bottom row i = local_H - 1 (if more than 1 row)
+        if (local_H >= 2) {
+            int i = local_H - 1;
+            for (int j = 0; j < W; ++j) {
+                float C = local_grid[i * W + j];
+                float C_up = (local_H == 1) ? ghost_up[j] : local_grid[(i - 1) * W + j];
+                float C_down = (i == local_H - 1) ? ghost_down[j] : local_grid[(i + 1) * W + j];
+                float C_left = (j > 0 ? local_grid[i * W + j - 1] : 0.0f);
+                float C_right = (j < W - 1 ? local_grid[i * W + j + 1] : 0.0f);
+
+                new_local[i * W + j] = calc_next_c(C, C_left, C_right, C_up, C_down);
+            }
+        }
+
+        // swap buffers
+        local_grid.swap(new_local);
+
+        // reduction example (count safe cells)
+        long long local_safe = 0;
+        for (float v : local_grid) if (std::fabs(v) < 1e-6) local_safe++;
+
+        long long total_safe = 0;
+        MPI_Reduce(&local_safe, &total_safe, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        // Optional: barrier (not strictly needed)
+        // MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+    // Gather results back to root
+    MPI_Gather(local_grid.data(), local_size, MPI_FLOAT,
+               full_grid.data(), local_size, MPI_FLOAT,
+               0, MPI_COMM_WORLD);
+}

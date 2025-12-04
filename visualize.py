@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Đọc dữ liệu từ file CSV
-path1 = "data/radioactive_matrix.csv"  # Hình ảnh đầu tiên
-path2 = "output/radioactive_matrix.csv"  # Hình ảnh thứ hai (có thể thay đổi đường dẫn)
+# path1 = "data/radioactive_matrix.csv"  # Hình ảnh đầu tiên
+# path2 = "output/radioactive_matrix.csv"  # Hình ảnh thứ hai (có thể thay đổi đường dẫn)
+path1 = "data/heat_matrix.csv"  # Hình ảnh đầu tiên
+path2 = "output/heat_matrix.csv"  # Hình ảnh thứ hai (có thể thay đổi đường dẫn)
 
 # Đọc dữ liệu của hai hình ảnh
 matrix1 = pd.read_csv(path1, header=None).values
