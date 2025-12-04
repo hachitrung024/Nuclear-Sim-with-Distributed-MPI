@@ -6,6 +6,7 @@
 #include <mpi.h>
 #include "radioactive_mpi.hpp"
 #include "heat_mpi.hpp"
+#include "shockwave_mpi.hpp"
 #include "utils.hpp"
 
 using namespace std;
@@ -30,6 +31,7 @@ int main(int argc, char* argv[]) {
     int steps = 100;
 
     vector<float> radioactive_grid, heat_grid;
+    vector<float> shockwave_grid(H * W, 0.0f);
 
     if (world_rank == 0) {
         // radioactive_grid = read_csv("data/radioactive_matrix.csv", H, W);
@@ -58,7 +60,8 @@ int main(int argc, char* argv[]) {
         }
 
         // run_radioactive_mpi_async(radioactive_grid, steps);
-        run_heat_mpi_async(heat_grid, H, W, steps);
+        // run_heat_mpi_async(heat_grid, H, W, steps);
+        run_shockwave_mpi_async(shockwave_grid, H, W, steps);
     }
 
 
@@ -74,7 +77,8 @@ int main(int argc, char* argv[]) {
         cout << "Safe cells after simulation: " << safe_after << "\n";
 
         // write_csv(radioactive_grid, "output/radioactive_matrix.csv");
-        write_csv(heat_grid, "output/heat_matrix.csv");
+        // write_csv(heat_grid, "output/heat_matrix.csv");
+        write_csv(shockwave_grid, "output/shockwave_matrix.csv");
     }
 
     MPI_Finalize();
