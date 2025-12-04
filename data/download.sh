@@ -1,1 +1,1 @@
-wget https://drive.google.com/file/d/1L5UZVaHQUBtE2E5rMkYhZiZsVABlMBaz/view?usp=sharing
+wget "https://drive.usercontent.google.com/u/0/uc?id=1L5UZVaHQUBtE2E5rMkYhZiZsVABlMBaz&export=download" -O radioactive_matrix.csv
