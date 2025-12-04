@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
         for (float v : radioactive_grid) if (fabs(v) < 1e-6) safe_after++;
         cout << "Safe cells after simulation: " << safe_after << "\n";
 
-        write_csv(radioactive_grid, "output/radioactive_matrix.csv");
+        // write_csv(radioactive_grid, "output/radioactive_matrix.csv");
     }
 
     MPI_Finalize();
