@@ -1,5 +1,5 @@
-#ifndef SIMULATION_HPP
-#define SIMULATION_HPP
+#ifndef RADIOACTIVE_MPI_HPP
+#define RADIOACTIVE_MPI_HPP
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -28,7 +28,6 @@ inline int idx(int i, int j) {
 }
 
 float calc_next_c(float C, float C_left, float C_right, float C_up, float C_down);
-void run_sequential(std::vector<float>& radioactive_grid, int steps);
-void run_mpi(std::vector<float>& full_grid, int steps);
+void run_radioactive_mpi_sync(std::vector<float>& radioactive_grid, int steps);
 
-#endif // SIMULATION_HPP
+#endif // RADIOACTIVE_MPI_HPP

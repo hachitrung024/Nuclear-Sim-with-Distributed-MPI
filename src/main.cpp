@@ -4,7 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <mpi.h>
-#include "simulation.hpp"
+#include "radioactive_mpi.hpp"
 #include "utils.hpp"
 
 using namespace std;
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     if (mode == 0) {
         if (world_rank == 0) {
             cout << "Running sequential simulation...\n";
-            run_sequential(radioactive_grid, steps);
+            // run_sequential(radioactive_grid, steps);
         }
     } else if (mode == 1) {
         if (world_rank == 0) {
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
             radioactive_grid.resize(H * W);
         }
 
-        run_mpi(radioactive_grid, steps);
+        run_radioactive_mpi_sync(radioactive_grid, steps);
     }
 
 

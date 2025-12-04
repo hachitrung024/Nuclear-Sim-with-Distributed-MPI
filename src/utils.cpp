@@ -1,9 +1,4 @@
 #include "utils.hpp"
-#include "simulation.hpp"
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
-#include <iostream>
 
 // Function to read a CSV file into a vector
 std::vector<float> read_csv(const std::string& path, int height, int width) {
@@ -35,14 +30,6 @@ std::vector<float> read_csv(const std::string& path, int height, int width) {
     fin.close();
     return grid;
 }
-
-// Function to write a vector of floats to a CSV file
-#include <fstream>
-#include <vector>
-#include <string>
-#include <stdexcept>
-#include <iomanip> // Required for std::fixed and std::setprecision
-#include "simulation.hpp" // Assuming H, W, idx are defined here
 
 void write_csv(const std::vector<float>& data, const std::string& path) {
     std::ofstream fout(path);
