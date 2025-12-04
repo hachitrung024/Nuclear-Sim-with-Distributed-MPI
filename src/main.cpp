@@ -49,8 +49,14 @@ int main(int argc, char* argv[]) {
         if (world_rank == 0) {
             cout << "Running MPI simulation...\n";
         }
+
+        if (world_rank != 0) {
+            radioactive_grid.resize(H * W);
+        }
+
         run_mpi(radioactive_grid, steps);
     }
+
 
     MPI_Barrier(MPI_COMM_WORLD);
     auto end = chrono::high_resolution_clock::now();
@@ -63,7 +69,7 @@ int main(int argc, char* argv[]) {
         for (float v : radioactive_grid) if (fabs(v) < 1e-6) safe_after++;
         cout << "Safe cells after simulation: " << safe_after << "\n";
 
-        // write_csv(radioactive_grid, "output/radioactive_matrix.csv");
+        write_csv(radioactive_grid, "output/radioactive_matrix.csv");
     }
 
     MPI_Finalize();

@@ -21,23 +21,48 @@ void run_mpi(std::vector<float>& full_grid, int steps) {
     MPI_Scatter(full_grid.data(), local_size, MPI_FLOAT,
                 local_grid.data(), local_size, MPI_FLOAT,
                 0, MPI_COMM_WORLD);
-
+    if (rank != 0) full_grid.resize(H * W);
+    
     for (int t = 0; t < steps; t++) {
         MPI_Status st;
 
-        if (rank < size - 1) {
-            MPI_Send(&local_grid[(local_H - 1) * W], W, MPI_FLOAT, rank + 1, 0, MPI_COMM_WORLD);
-            MPI_Recv(ghost_down.data(), W, MPI_FLOAT, rank + 1, 1, MPI_COMM_WORLD, &st);
+        const int TAG_UP = 0;
+        const int TAG_DOWN = 1;
+
+        // Exchange with rank - 1 (UP neighbor)
+        if (rank > 0) {
+            MPI_Sendrecv(
+                &local_grid[0],               // send top row
+                W, MPI_FLOAT,
+                rank - 1, TAG_UP,
+
+                ghost_up.data(),              // receive ghost_up
+                W, MPI_FLOAT,
+                rank - 1, TAG_DOWN,
+
+                MPI_COMM_WORLD, &st
+            );
         } else {
-            std::memset(ghost_down.data(), 0, W * sizeof(float));
+            std::fill(ghost_up.begin(), ghost_up.end(), 0.0f);
         }
 
-        if (rank > 0) {
-            MPI_Recv(ghost_up.data(), W, MPI_FLOAT, rank - 1, 0, MPI_COMM_WORLD, &st);
-            MPI_Send(&local_grid[0], W, MPI_FLOAT, rank - 1, 1, MPI_COMM_WORLD);
+        // Exchange with rank + 1 (DOWN neighbor)
+        if (rank < size - 1) {
+            MPI_Sendrecv(
+                &local_grid[(local_H - 1) * W], // send bottom row
+                W, MPI_FLOAT,
+                rank + 1, TAG_DOWN,
+
+                ghost_down.data(),              // receive ghost_down
+                W, MPI_FLOAT,
+                rank + 1, TAG_UP,
+
+                MPI_COMM_WORLD, &st
+            );
         } else {
-            std::memset(ghost_up.data(), 0, W * sizeof(float));
+            std::fill(ghost_down.begin(), ghost_down.end(), 0.0f);
         }
+
 
         std::memcpy(buf.data(), ghost_up.data(), W * sizeof(float));
         std::memcpy(buf.data() + W, local_grid.data(), local_size * sizeof(float));
