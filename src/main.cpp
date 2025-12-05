@@ -18,7 +18,32 @@ int main(int argc, char* argv[]) {
     int world_rank, world_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    char hostname[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(hostname, &name_len);
 
+    // Gather all hostnames at rank 0
+    vector<char> all_hosts(world_size * MPI_MAX_PROCESSOR_NAME);
+
+    MPI_Gather(hostname, MPI_MAX_PROCESSOR_NAME, MPI_CHAR,
+            all_hosts.data(), MPI_MAX_PROCESSOR_NAME, MPI_CHAR,
+            0, MPI_COMM_WORLD);
+
+    if (world_rank == 0) {
+        cout << "\n=== MPI Process Layout ===\n";
+
+        // Count processes per host
+        map<string, int> count;
+        for (int r = 0; r < world_size; r++) {
+            string host(&all_hosts[r * MPI_MAX_PROCESSOR_NAME]);
+            count[host]++;
+        }
+
+        for (auto& kv : count) {
+            cout << kv.first << " : " << kv.second << " processes\n";
+        }
+        cout << "==========================\n\n";
+    }
     if (argc < 2) {
         if (world_rank == 0) {
             cerr << "Usage: " << argv[0] << " <mode>\n";
