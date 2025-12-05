@@ -2,6 +2,7 @@
 #define HEAT_MPI_HPP
 #include <vector>
 #include <mpi.h>
+#include <iostream>
 constexpr float PADDING_VALUE = 30.0f;
 
 void run_heat_mpi_sync(std::vector<float>& full_grid, int H, int W, int steps);
