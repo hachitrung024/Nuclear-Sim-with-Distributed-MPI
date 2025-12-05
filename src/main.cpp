@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <mpi.h>
+#include <map>
 
 #include "radioactive_mpi.hpp"
 #include "heat_mpi.hpp"
